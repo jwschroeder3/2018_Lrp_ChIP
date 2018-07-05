@@ -246,7 +246,7 @@ if __name__ == "__main__":
     bio_qs = [convert_p_to_q(bio_p) for bio_p in bio_ps]
     tech_qs= [convert_p_to_q(tech_p) for tech_p in tech_ps]
     bio_tech_peaks = bio_and_tech_filter(bio_qs, tech_qs)
-    peaks = call_peaks(idr_filter(bio_tech_peaks, idrs))
+    peaks = call_peaks(idr_filter(bio_tech_peaks, idrs), consolidate=args.bins)
     averagerobustz = np.mean([rz.calculate_robust_z(sig) for sig in actual_sigs], 0)
 
 
