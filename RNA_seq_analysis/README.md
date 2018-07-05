@@ -75,11 +75,11 @@ arg2 is the filtered fastq for R2
 kallisto quant -i ATCC_47076_transcriptome.idx -o arg0 -t 4 -b 100 --rf-stranded arg1 arg2 > arg0_kallisto.log 2> arg0_kallisto.err
 ```
 
-## Estimating log2(WT/KO) TPM ##
+## Estimating log2(WT/KO) Expression ratio ##
 
-Finally, the log2(WT/KO) TPM estimates were calculated from each kallisto output
-directory after unpacking the .hd5 files for each sample using the custom
-script `calculated_tpm.py`
+Finally, the log2(WT/KO) expression ratio estimates were calculated
+from each kallisto output directory after unpacking the .hd5 files for
+each sample using the custom script `calculated_expr.py`
 
 Here
 arg0 indicates a sample name
@@ -89,7 +89,7 @@ arg3 is KO rep 1
 arg4 is KO rep 2
 
 ```
-python calculate_tpm.py arg1/bootstraps arg2/bootstraps arg3/bootstraps arg4/bootstraps arg0_tpm_estimates.txt
+python calculate_expr.py arg1 arg2 arg3 arg4 arg0_log2_wt_ko_ratio.txt
 ```
 
 ## Wald test results ##
