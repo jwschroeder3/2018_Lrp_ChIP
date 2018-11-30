@@ -38,8 +38,10 @@ bowtie2 -x /home/mbwolfe/genomes/bowtie2indices/ATCC_47076 -1 arg1 -2 arg3 -U ar
 
 ## Filtering of high abundance RNAs ##
 In order to find reads that overlapped with our high abundance RNA set we used
-the custom python script `parse_for_overlaps.py` to find reads that overlapped
-with the locations of interest
+the custom python script `parse_for_overlaps.py` to find reads that
+overlapped with the locations of interest. NOTE: You will need the
+`sam_utils.py` file in your path (or copied over to the directory
+`parse_for_overlaps.py` is being run from). This file is in `../ChIP_analysis/`.
 
 Here
 arg0 represents the .bam of interest
@@ -77,9 +79,29 @@ kallisto quant -i ATCC_47076_transcriptome.idx -o arg0 -t 4 -b 100 --rf-stranded
 
 ## Estimating log2(WT/KO) Expression ratio ##
 
+Next the .hd5 files were unpacked for use with the next script.
+These files must be unpacked into a subdirectory called `/bootstraps/`
+in the kallisto directories for each sample. In order to do this, one
+can write a simple bash script that looks something like this:
+
+```
+# this assumes you ran kallisto all in one directory and you are in
+# that directory
+for dir in *kallisto_dirs; # <- *kallisto_dirs is a wild card that encompasses all your sample names
+
+do
+    # change into a kallisto data directory
+    cd $dir
+    # dump the .h5 file into a bootstraps directory
+    /path/to/kallisto/binary/kallisto hd5dump abundance.h5 -o bootstraps
+    # change back up to the main directory
+    cd -
+done;
+```
+
 Finally, the log2(WT/KO) expression ratio estimates were calculated
-from each kallisto output directory after unpacking the .hd5 files for
-each sample using the custom script `calculated_expr.py`
+from each kallisto output directory using the custom script `calculated_expr.py` 
+after unpacking the .hd5 files for each sample 
 
 Here
 arg0 indicates a sample name
