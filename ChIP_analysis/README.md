@@ -22,7 +22,7 @@ fastqc arg0_R2_trim_paired.fastq.gz -f fastq -o fastqc_after/
 ```
 
 ## Alignment of processed reads ##
-Next, each pair of processed reads was aligned with bowtie2. 
+Next, each pair of processed reads was aligned with bowtie2.
 
 Here
 arg0 is substituted for a samples prefix
@@ -31,18 +31,19 @@ arg2 represents the trimmed paired fastq for R2 of the paired end sequencing
 arg3 represents the trimmed unpaired fastq for R1 of the paired end sequencing
 arg4 represents the trimmed unpaired fastq for R2 of the paired end sequencing
 ```
-bowtie2 -x /home/mbwolfe/genomes/bowtie2indices/ATCC_47076 -1 arg1 -2 arg2 -U arg3,arg4 -X 2000 -q --end-to-end --very-sensitive -p 5 --phred33 --dovetail 2> arg0_bow.log | samtools view -bSh - > arg0.bam 
+bowtie2 -x /home/mbwolfe/genomes/bowtie2indices/ATCC_47076 -1 arg1 -2 arg2 -U arg3,arg4 -X 2000 -q --end-to-end --very-sensitive -p 5 --phred33 --dovetail 2> arg0_bow.log | samtools view -bSh - > arg0.bam
 ```
 
 ## Mapping of coverage and preparation for bootstrapping ##
 Next, reads were filtered with samtools and made into a sampling object using
 the custom script `bootstrap_sam_file.py`'s `parse` option.
+### Note: if you have single-end reads, DO NOT include the `-f 3` flag, as it will exclude all reads without a proper pair, and you ain't got 'em.
 
 Here
 arg0 is the sample prefix
 arg1 is the input bam file
 ```
-samtools view -f 3 -F 2828 -q 30 arg1 | python bootstrap_sam_file.py parse - arg0.ob --paired 2> arg0_sampler.err
+samtools view -f 3 -F 2828 -q 30 arg1 | python2.7 bootstrap_sam_file.py parse - arg0.ob --paired 2> arg0_sampler.err
 ```
 
 ## Obtaining summary tracks at 10 bp resolution ##
@@ -59,7 +60,7 @@ arg7 and arg8 are samplers for the KO input samples
 Note that arg1 and arg3 are paired, arg2 and arg4 are paired etc.
 
 ```
-python bootstrapped_chip_no_consolidation.py 4639676 arg0 --ext_samps arg1 arg2 --inp_samps arg3 arg4 --ext_conts arg5 arg6 --inp_conts arg7 arg8 --num_replicates 1 --identity -s 1234 -p 8 --save_summaries 0.05 --resolution 10 2> arg0.log
+python2.7 bootstrapped_chip_no_consolidation.py 4639676 arg0 --ext_samps arg1 arg2 --inp_samps arg3 arg4 --ext_conts arg5 arg6 --inp_conts arg7 arg8 --num_replicates 1 --identity -s 1234 -p 8 --save_summaries 0.05 --resolution 10 2> arg0.log
 ```
 
 ## Obtaining bootstrap replicate summary statistics ##
@@ -77,7 +78,7 @@ arg7 and arg8 are samplers for the KO input samples
 Note that arg1 and arg3 are paired, arg2 and arg4 are paired etc.
 
 ```
-python bootstrapped_chip_no_consolidation.py 4639676 arg0 --ext_samps arg1 arg2 --inp_samps arg3 arg4 --ext_conts arg5 arg6 --inp_conts arg7 arg8 --num_replicates 1000 -s 1234 -p 8 --save_summaries 0.05 --resolution 10 2> arg0_1000_bootstrap.log
+python2.7 bootstrapped_chip_no_consolidation.py 4639676 arg0 --ext_samps arg1 arg2 --inp_samps arg3 arg4 --ext_conts arg5 arg6 --inp_conts arg7 arg8 --num_replicates 1000 -s 1234 -p 8 --save_summaries 0.05 --resolution 10 2> arg0_1000_bootstrap.log
 ```
 
 ## Calculating IDR statistic ##
@@ -106,7 +107,7 @@ idr_combo1-2.npy represent each combination of subtracted replicates for the idr
                  calculation
 out_peaks is the output prefix
 ```
-python calculate_peaks.py --log2ratios actual_sub1.npy actual_sub2.npy actual_sub3.npy actual_sub4.npy --mad mad_sub1.npy mad_sub2.npy mad_sub3.npy mad_sub4.npy --idr idr_combo1.npy idr_combo2.npy --resolution 10 --bins 3 --outpre out_peaks --idralpha 0.01 --bioalpha 0.001 --techalpha 0.001
+python2.7 calculate_peaks.py --log2ratios actual_sub1.npy actual_sub2.npy actual_sub3.npy actual_sub4.npy --mad mad_sub1.npy mad_sub2.npy mad_sub3.npy mad_sub4.npy --idr idr_combo1.npy idr_combo2.npy --resolution 10 --bins 3 --outpre out_peaks --idralpha 0.01 --bioalpha 0.001 --techalpha 0.001
 ```
 
 For any questions or clarifications please contact Michael Wolfe at
