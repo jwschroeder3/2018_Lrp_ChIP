@@ -35,6 +35,7 @@
 ################################################################################
 
 ## Python base imports ##
+from __future__ import print_function
 import re
 import itertools
 import logging
@@ -62,7 +63,7 @@ def grouper(iterable, n, fillvalue=None):
     ('G', 'x', 'x')
     """
     args = [iter(iterable)] * n
-    return itertools.izip_longest(fillvalue=fillvalue, *args)
+    return itertools.zip_longest(fillvalue=fillvalue, *args)
 
 def complement(sequence):
     """Complement a nucleotide sequence
@@ -89,7 +90,7 @@ class SamAlignment:
     """ Class for holding a single line out of a SAM file. Along with methods
     to manipulate and extract data from the alignment.
     """
-        
+
     def __init__(self, line, sep = '\t'):
         """ Class initalizer. Takes in a single line from a Sam alignment and
         stores each and every field as a class attribute.
@@ -213,8 +214,8 @@ class SamAlignment:
         self.aligned_muts = None
 
     def parse_opt_fields(self, fields_list):
-        """ Parses each field from the optional fields in the 
-        SAM file. 
+        """ Parses each field from the optional fields in the
+        SAM file.
 
         Inputs: List. Contains all the optional fields in a sam file
         Modifies: nothing
@@ -243,7 +244,7 @@ class SamAlignment:
         # right now, could be implemented in the future
         # Have a dictionary to hold the functions to convert each type of
         # field to the type it indicates
-        d_type_func = {'A': str, 'i': int, 'f':float, 'Z':str, 
+        d_type_func = {'A': str, 'i': int, 'f':float, 'Z':str,
                        'H': str, 'B': str}
         # initialize a dictionary to hold the parsed fields
         field_dict = {}
@@ -263,9 +264,9 @@ class SamAlignment:
         Inputs allow additional, filters for determining if a read is good or
         not.
 
-        Input: good_flags - flags that are required to be present in self.FLAG 
+        Input: good_flags - flags that are required to be present in self.FLAG
                             in order to pass the filter
-               bad_flags - flags that are required to be absent from self.FLAG 
+               bad_flags - flags that are required to be absent from self.FLAG
                            in order to pass the filter
                [mapq]  - int. If positive, only return true if self.MAPQ is
                          >= mapq. If negative only return true if self.MAPQ
@@ -275,7 +276,7 @@ class SamAlignment:
                          on how many reads are filtered for what issues.
 
         Modifies: stats
-        Returns: True if the read passes filters and False otherwise. 
+        Returns: True if the read passes filters and False otherwise.
 
         Tests:
 
@@ -344,27 +345,27 @@ class SamAlignment:
         elif mapq >= 0:
             # if the mapq is greater than 0 then we are looking for reads
             # ABOVE the mapq score specified
-            mapq_condition = self.MAPQ >= mapq 
+            mapq_condition = self.MAPQ >= mapq
         elif mapq < 0:
             # if the mapq is less than 0 then we are looking for reads
             # BELOW the mapq score specified
-            mapq_condition = self.MAPQ < abs(mapq) 
+            mapq_condition = self.MAPQ < abs(mapq)
         else:
             raise ValueError("mapq must be a positive or negative integer "\
-                             "value.") 
+                             "value.")
         good_al = good_al and mapq_condition
         if stats and not mapq_condition:
             stats.total_mapq += 1
         # finally return whether the alignment was good or not
         return bool(good_al)
-    
+
     def is_gapped(self):
         """ Determine if the alignment has any gaps in it as determined by the
         CIGAR field.
 
         Inputs: nothing
         Modifies: nothing
-        Returns: True if 'N' is in the CIGAR field. 
+        Returns: True if 'N' is in the CIGAR field.
                  False if not. Raises error if the CIGAR field = "*"
         Tests:
         >>> line = "testQ.1.testR.20.30.3M.testR.25.9.AAA.(((.NM:i:0"
@@ -399,7 +400,7 @@ class SamAlignment:
         reference. If paired, forces each read of the pair to have opposite
         orientations, otherwise it raises an error
 
-        Inputs: paired - boolean. if true, checks reads mate to see if it is 
+        Inputs: paired - boolean. if true, checks reads mate to see if it is
                          in a consistent orientation. If not, raises error.
                          if false, just checks if read is rc to reference.
         Modifies: nothing
@@ -441,7 +442,7 @@ class SamAlignment:
         this_is_rc = eval(bin(self.FLAG)) & 0x10
         # check if the read's pair is reverse complement to the reference
         other_is_rc = eval(bin(self.FLAG)) & 0x20
-        
+
         # if paired, force the read's pair to have the opposite orientation
         # of the read. Raise error if not
         if paired:
@@ -460,14 +461,14 @@ class SamAlignment:
 
     def sense_to_ref(self, paired, library):
         """ Function to determine whether the ORIGINAL RNA molecule was sense
-        to the reference or antisense to the reference. Only implemented for 
+        to the reference or antisense to the reference. Only implemented for
         pairs when each read is in a different orientation
-        
+
         Inputs: paired  - boolean. If True than additional checking will be done
                           to make sure the paired read is consistent with this
                           read. If False, then it is considered an individual
                           read.
-                library - str. ["R1" | "R2" | "unstranded"]. R1 indicates that 
+                library - str. ["R1" | "R2" | "unstranded"]. R1 indicates that
                           the first
                           read sequenced (*_R1.fasta) is sense to the original
                           RNA strand. R2 indicates that the 2nd read sequenced
@@ -502,7 +503,7 @@ class SamAlignment:
         Traceback (most recent call last):
         RuntimeError: Read mate ...
 
-        Test a paired end read 
+        Test a paired end read
         >>> read.FLAG = 32 | 64
         >>> read.sense_to_ref(True, "R1")
         True
@@ -527,7 +528,7 @@ class SamAlignment:
         """
         # if the read is paired, we have to consider the orientation of
         # the reads
-        if paired: 
+        if paired:
             # first segment in the template
             is_first = eval(bin(self.FLAG)) & 0x40
             # last segment in the template
@@ -537,7 +538,7 @@ class SamAlignment:
                 is_rc = self.is_rc(True)
             # raise the error if this can't be determined
             except RuntimeError:
-                raise 
+                raise
             # determine what orientation that entire segment is in
             if ( (is_first and not(is_rc)) or (is_second and is_rc) ):
                 if library == "R1" or library == "unstranded":
@@ -600,7 +601,7 @@ class SamAlignment:
         [(7, 'M')]
 
         More complex test
-        >>> read.CIGAR = "3M4D2M1I1M" 
+        >>> read.CIGAR = "3M4D2M1I1M"
         >>> read.cigar_tuples = None
         >>> read.get_cigar_tuples()
         [(3, 'M'), (4, 'D'), (2, 'M'), (1, 'I'), (1, 'M')]
@@ -616,8 +617,8 @@ class SamAlignment:
         # split using regular expressions. The parenthesis in the re gives us
         # the seperators as well
         cigar_list = re.split('([MIDNSHP=X])', self.CIGAR)
-        
-        # loop through by twos using itertools grouper recipe from the 
+
+        # loop through by twos using itertools grouper recipe from the
         # python itertools documentation.
         # The cigar string always starts with a number and ends in a char,
         # so we cut the list short by one since the last value by twos will
@@ -634,13 +635,13 @@ class SamAlignment:
     def get_aligned_blocks(self):
 
         """ Function to take the cigar field and determine the locations
-        where there is continuous mapping coverage. 
-        
+        where there is continuous mapping coverage.
+
         Inputs: nothing
         Modifies: nothing
-        Returns: a list of (start, end) locations where continuous mapping 
-                 coverage occurs. Continuous coverage includes locations where 
-                 there is continuous 'M', '=', 'D', or 'X' in the CIGAR field. 
+        Returns: a list of (start, end) locations where continuous mapping
+                 coverage occurs. Continuous coverage includes locations where
+                 there is continuous 'M', '=', 'D', or 'X' in the CIGAR field.
                  Breaks occur at 'S', 'I', or 'N' in the CIGAR field.
         Tests:
         All matching test, read.POS is at 1, cigar is 7M
@@ -690,7 +691,7 @@ class SamAlignment:
         start = self.POS
         # parse the cigar string into tuples
         cigar_tuples = self.get_cigar_tuples()
-       
+
         # go through each cigar number and character
         for val, char in cigar_tuples:
             # if it is an alignment match of any sort,
@@ -699,13 +700,13 @@ class SamAlignment:
             # just add the value to the previous end.
             if char in ['M', '=', 'X', 'D']:
                 if end is not None:
-                    end += val 
+                    end += val
                 else:
                     end = start + val
             # If there is an intron, go ahead and append
             # the previous (start, end) pair to the list and reset the
             # next end to being unknown. Additionally, push the next start
-            # to the end of the intron. If an end had not been 
+            # to the end of the intron. If an end had not been
             # determined yet, do not add the (start, end) pair to the list
             # as this is a continuing insertion of some sort.
             elif char == 'N':
@@ -732,7 +733,7 @@ class SamAlignment:
 
         """This function uses the CIGAR field of the read to determine
         what the sequence that aligns to the reference looks like after
-        removing any insertions and accounting for deletions. It likewise 
+        removing any insertions and accounting for deletions. It likewise
         returns the corresponding quality scores associated with the sequence.
 
         Inputs: nothing
@@ -741,7 +742,7 @@ class SamAlignment:
                              removed
                  phred     - phred scores corresponding to each base in seq
         Tests:
-        
+
         Test an all matching sequence
         >>> line = "testQ.1.testR.2.30.7M.testR.4.9.AGTCGCT.!#%()+,.NM:i:0"
         >>> read = SamAlignment(line, sep = '.')
@@ -797,11 +798,11 @@ class SamAlignment:
         # expand out the tuples to make a big cigar string
         for val, char in cigar_tuples:
             expanded_cigar += val*char
-        
+
         # remove the elements that would not be included in the SEQ field
         expanded_cigar = expanded_cigar.replace('N', '')
         expanded_cigar = expanded_cigar.replace('H', '')
-    
+
         #Initialize a new seq variable
         new_seq = ''
         new_phred = ''
@@ -839,10 +840,10 @@ class SamAlignment:
     def get_gap_blocks(self):
         """ Function to take the cigar field and determine the locations
         where there is a gap in coverage
-        
+
         Inputs: nothing
         Modifies: nothing
-        Returns: a list of (start, end) locations where gaps occur in mapping 
+        Returns: a list of (start, end) locations where gaps occur in mapping
                  coverage.
         Tests:
 
@@ -896,7 +897,7 @@ class SamAlignment:
         new_end = start[1:]
         # zip them together into a new list of tuples and return
         return zip(new_start, new_end)
-        
+
     def get_aligned_locs(self):
 
         """ Function to get the corresponding locations with
@@ -953,7 +954,7 @@ class SamAlignment:
         >>> read.get_aligned_locs()
         [1, 2, 3, 4, 5]
         """
-    
+
         # get both the seq with no gaps and the start and stop
         # locations
         if self.aligned_locs:
@@ -975,7 +976,7 @@ class SamAlignment:
         consideration. Thus, if paired is True, it will return the start
         and end for the entire pair, but only the locations within gaps for
         the individual read it was called on.
-        
+
         Inputs: paired - boolean. Treat read as SE or PE. If paired is True,
                          returns the pos + TLEN as the end.
                          If false then returns the right most mapped location
@@ -988,7 +989,7 @@ class SamAlignment:
                  gaps   - list. locations that reside within gaps
 
         Tests:
-        
+
         All matching test, read.POS is at 1, cigar is 7M, read.TLEN is 12
         >>> line = "testQ.1.testR.2.30.7M.=.4.12.AGTCGCT.!#%()+,.NM:i:0"
         >>> read = SamAlignment(line, sep = '.')
@@ -1007,7 +1008,7 @@ class SamAlignment:
         (1, 13, [])
 
         Test internal introns
-        >>> line = "testQ.1.testR.2.30.2M3N5M.=.4.12.AGTCGCT.!#%()+,.NM:i:0" 
+        >>> line = "testQ.1.testR.2.30.2M3N5M.=.4.12.AGTCGCT.!#%()+,.NM:i:0"
         >>> read = SamAlignment(line, sep = '.')
         >>> read.start_end_gaps(False)
         (1, 11, [(3, 6)])
@@ -1068,7 +1069,7 @@ class SamAlignment:
         Input: nothing
         Modifies: nothing
         Returns: string. Genome sequence reconstructed from MD field
-                 list. Tuples containing mutations in the read from the 
+                 list. Tuples containing mutations in the read from the
                  reference, [(loc, ref_base, mut_base, phred, loc)]
 
         Tests:
@@ -1097,14 +1098,14 @@ class SamAlignment:
         >>> read.reconstruct_reference()
         ('GGTCGCG', [(1, 'G', 'A', '!'), (7, 'G', 'T', ',')])
 
-        Test internal deletions, 
+        Test internal deletions,
         >>> line = "testQ.1.testR.2.30.2M3D5M.=.4.12.AGTCGCT.!#%()+,.MD:Z:2^AAA5"
         >>> read = SamAlignment(line, sep = '.')
         >>> read.reconstruct_reference()
         ('AGAAATCGCT', [(3, 'A', '-', '-'), (4, 'A', '-', '-'), (5, 'A', '-', '-')])
 
         Test internal introns
-        >>> line = "testQ.1.testR.2.30.2M3N5M.=.4.12.AGTCGCT.!#%()+,.MD:Z:7" 
+        >>> line = "testQ.1.testR.2.30.2M3N5M.=.4.12.AGTCGCT.!#%()+,.MD:Z:7"
         >>> read = SamAlignment(line, sep = '.')
         >>> read.reconstruct_reference()
         ('AGTCGCT', [])
@@ -1130,7 +1131,7 @@ class SamAlignment:
         if self.aligned_reference and self.aligned_muts:
             return self.aligned_reference, self.aligned_muts
         # get the aligned sequence and phred scores
-        aligned_seq, aligned_phred = self.get_aligned_seq_and_phred() 
+        aligned_seq, aligned_phred = self.get_aligned_seq_and_phred()
         # get the aligned locations
         aligned_locs = self.get_aligned_locs()
         # create a list to hold the split up MD values
@@ -1140,7 +1141,7 @@ class SamAlignment:
         # split using regular expressions. The parenthesis give us the
         # seperators as well
         try:
-            MD_list = re.split('([AGTC^])', self.OPT['MD']) 
+            MD_list = re.split('([AGTC^])', self.OPT['MD'])
         except KeyError:
             raise KeyError("MD field not found for read %s"%self.QNAME)
         # make a list to hold of the mutations that are found
@@ -1162,7 +1163,7 @@ class SamAlignment:
                     # append this value to the reference sequence
                     reference_seq.append(val)
                     # we also append mutation information to the mutation list
-                    mut_list.append((aligned_locs[start], val, 
+                    mut_list.append((aligned_locs[start], val,
                                      aligned_seq[start],
                                      aligned_phred[start]))
                     # finally we increment the index of where we are on the
@@ -1177,7 +1178,7 @@ class SamAlignment:
                 # we append all of this to the reference sequence
                 reference_seq.append(aligned_seq[start:end])
                 # and change the end to become the start
-                start = end 
+                start = end
         # finally we join the list of bases in the reference sequence to a
         # string and cache it along with the mutation list
         self.aligned_reference = ''.join(reference_seq)
@@ -1187,7 +1188,7 @@ class SamAlignment:
 
     def record_muts(self, strand, phred_encoding=33):
         """ Function to find mutations found in the read as compared to the
-        reference. Considers all reads individually (doesn't matter if paired 
+        reference. Considers all reads individually (doesn't matter if paired
         or not).  This depends on the presence of both a CIGAR field and an
         MD field in the alignment. If these are not present then this cannot
         be used. It also requires the XM field to be present
@@ -1198,7 +1199,7 @@ class SamAlignment:
                 [phred_encoding] - int. what is the phred-encoding for the read?
                                    the default is 33.
         Modifies: nothing
-        Returns: A list of mutation records in the form: 
+        Returns: A list of mutation records in the form:
         (chrm, loc, strand, base, mut_base, phred)
 
         Tests:
@@ -1276,16 +1277,16 @@ class SamAlignment:
         that actually have sequence for the read, not its pair or the
         interpolated region between the pair and itself.
 
-        Inputs: base    - char. The identity of the reference base 
+        Inputs: base    - char. The identity of the reference base
                 strand  - char. ["+" | "-" | "."] If + treats the base as is,
-                          if - searches for the bases complement. If . it 
+                          if - searches for the bases complement. If . it
                           searches for both the base and its complement (
                           essentially search for base pairs)
         Modifies: nothing
         Returns: a numpy array of locations where the base occurs on the read.
 
         Tests:
-        
+
         All base of interest
         >>> line = "testQ.1.testR.2.30.7M.testR.4.9.TTTTTTT.!#%()+,.NM:i:0.MD:Z:7"
         >>> read = SamAlignment(line, sep = '.')
@@ -1327,15 +1328,15 @@ class SamAlignment:
 
         if strand == "-":
             # NOTE only complementing! not reverse complementing for
-            # minus strand read 
-            base = complement(base) 
+            # minus strand read
+            base = complement(base)
 
         # use numpy arrays to quickly find where bases are in the reference
         # sequence
         base_index = np.where(np.asarray(list(genome_sequence)) == base)[0]
         locs_list = [aligned_locs[i] for i in base_index]
         # if we don't have stranded information, then we have to consider that
-        # the "base" could be from either strand. We therefore search for a 
+        # the "base" could be from either strand. We therefore search for a
         # "base-pair" i.e. find all the locations of both the base and its
         # complement
         if strand == ".":
@@ -1367,7 +1368,7 @@ class MutDataFrame:
         Returns: None
 
         Tests:
-        
+
         Test initialization
         >>> x = MutDataFrame()
         >>> x.mutation_list
@@ -1391,11 +1392,11 @@ class MutDataFrame:
     def create_df_from_list(self):
         """Takes the list of mutation data and enters it into the dataframe all
         at once. Only to be done once all mutations are found. Mutation_list
-        has to be in the form of: 
+        has to be in the form of:
 
         [(chrom1, loc1, strand1, base1, mut1, phred1), ...,(chromN, locN,
         strandN, baseN, mutN, phredN)]
-        
+
         Inputs: None
 
         Modifies: self.df
@@ -1483,7 +1484,7 @@ class MutDataFrame:
         >>> x.df
           chrom  loc strand base mut  phred  pvalue  qvalue
         0  test    1      +    A   T     30   0.001   0.002
- 
+
         Test a non-passing value
         >>> x = MutDataFrame()
         >>> x.mutation_list = [("test", 2, "-","G","C",2)]
@@ -1497,7 +1498,7 @@ class MutDataFrame:
         # defaults to assuming phred scores havent been converted to p values
         self.phred_to_p()
         # calculate the qvalues, alpha does nothing in this regard here
-        self.df["qvalue"] = multicomp.fdrcorrection0(self.df["pvalue"], 
+        self.df["qvalue"] = multicomp.fdrcorrection0(self.df["pvalue"],
                                                      alpha)[1]
         # filter by alpha
         self.df = self.df[self.df["qvalue"] < alpha]
@@ -1517,9 +1518,9 @@ class MutDataFrame:
 
         Example: get all the T to C mutations from region chr1:1-100 that were
         from the "+" strand:
-        
-        filtered_df = Mut_Df.filter_strand('+', 
-                            data_frame= Mut_Df.filter_region("chr1", (1,100), 
+
+        filtered_df = Mut_Df.filter_strand('+',
+                            data_frame= Mut_Df.filter_region("chr1", (1,100),
                             data_frame=Mut_Df.filter_mut_type(T, C)))
         Tests:
         >>> x = MutDataFrame()
@@ -1556,7 +1557,7 @@ class MutDataFrame:
     def filter_region(self, chrom, locs=None, data_frame=None):
 
         """Function to grab mutations within a certain region. Can be coupled
-        with filter_mut_type or filter_strand by specifying 
+        with filter_mut_type or filter_strand by specifying
         data_frame = output_from <self.mut_type> on each subsequent function
 
         Inputs: chrom        - char chromosome you are looking for
@@ -1571,9 +1572,9 @@ class MutDataFrame:
 
         Example: get all the T to C mutations from region chr1:1-100 that were
         from the "+" strand:
-        
-        filtered_df = Mut_Df.filter_strand('+', 
-                            data_frame= Mut_Df.filter_region("chr1", (1,100), 
+
+        filtered_df = Mut_Df.filter_strand('+',
+                            data_frame= Mut_Df.filter_region("chr1", (1,100),
                             data_frame=Mut_Df.filter_mut_type(T, C)))
         Tests:
         >>> x = MutDataFrame()
@@ -1592,7 +1593,7 @@ class MutDataFrame:
         else:
             df = self.df
         if locs:
-            df = df[(df['chrom'] == chrom) & 
+            df = df[(df['chrom'] == chrom) &
                  ((df['loc'] >= locs[0]) & (df['loc'] <= locs[1]))]
         else:
             df = df[(df['chrom']==chrom)]
@@ -1616,9 +1617,9 @@ class MutDataFrame:
 
         Example: get all the T to C mutations from region chr1:1-100 that were
         from the "+" strand:
-        
-        filtered_df = Mut_Df.filter_strand('+', 
-                            data_frame= Mut_Df.filter_region("chr1", (1,100), 
+
+        filtered_df = Mut_Df.filter_strand('+',
+                            data_frame= Mut_Df.filter_region("chr1", (1,100),
                             data_frame=Mut_Df.filter_mut_type(T, C)))
         Tests:
         >>> x = MutDataFrame()
@@ -1644,12 +1645,12 @@ class MutDataFrame:
 
     def count_muts(self, data_frame=None):
         """Increments counters for each type of mutation.
-        
+
         Inputs: [data_frame] - dataframe from the results of a filter. If None
                                (default), then uses self.df
         Modifies: nothing
 
-        Returns: dictionary of mutations with mutation type as the key. For 
+        Returns: dictionary of mutations with mutation type as the key. For
         example, dict['AT']: 30, if there were 30 mutations that were A->T
 
         Tests:
@@ -1757,7 +1758,7 @@ class AlignmentStats:
         for key in set(self.bad_flag_reads.keys(), other.bad_flag_reads.keys()):
             new.bad_flag_reads[key] = self.bad_flag_reads.get(key, 0) +\
                                       other.bad_flag_reads.get(key, 0)
-        for key in set(self.missed_good_flag_reads.keys(), 
+        for key in set(self.missed_good_flag_reads.keys(),
                        other.missed_good_flag_reads.keys()):
             new.missed_good_flag_reads[key] = self.missed_good_flag_reads.get(key, 0) +\
                                               other.missed_good_flag_reads.get(key, 0)
@@ -1809,50 +1810,50 @@ class AlignmentStats:
         self.base_counts['G'] += seq.count('G')
         self.base_counts['C'] += seq.count('C')
         self.base_counts['A'] += seq.count('A')
-        
+
     def print_map_stats(self, section, mapq, paired, locs=False):
         """ This prints out each of the counters in an easy to read format
         """
-        print "MAPPING STATS FOR %s"%section
+        print("MAPPING STATS FOR {}".format(section))
         if paired:
-            print "Paired-End Mode"
+            print("Paired-End Mode")
         else:
-            print "Single-End Mode"
-        print 20*"-"
-        print "Total reads in file: %s" %self.total_reads
-        print ""
-        print "Quality Filtering"
-        print "Total reads filtered: %s"%(self.total_reads - self.total_mapped)
-        print "Filtered for:"
+            print("Single-End Mode")
+        print(20*"-")
+        print("Total reads in file: {}".format(self.total_reads))
+        print("")
+        print("Quality Filtering")
+        print("Total reads filtered: {}".format(self.total_reads - self.total_mapped))
+        print("Filtered for:")
         for flag in self.missed_good_flag_reads.keys():
-            print "\tMissing %s: %s"%(self.flag_mapping[flag], self.missed_good_flag_reads[flag])
+            print("\tMissing {}: {}".format(self.flag_mapping[flag], self.missed_good_flag_reads[flag]))
         for flag in self.bad_flag_reads.keys():
-            print "\t%s: %s"%(self.flag_mapping[flag], self.bad_flag_reads[flag])
+            print("\t{}: {}".format(self.flag_mapping[flag], self.bad_flag_reads[flag]))
         if mapq is None:
             pass
         elif mapq >= 0:
-            print "\tMAPQ < %s : %s"%(mapq, self.total_mapq)
+            print("\tMAPQ < {} : {}".format(mapq, self.total_mapq))
         elif mapq < 0:
-            print "\tMAPQ > %s : %s"%(mapq, self.total_mapq)
+            print("\tMAPQ > {} : {}".format(mapq, self.total_mapq))
         if locs:
-            print "\tOverlap with locations: %s"%(self.total_overlap)
-        print "\tStrandedness could not be determined: %s"%(self.total_bad_sense)
+            print("\tOverlap with locations: {}".format(self.total_overlap))
+        print("\tStrandedness could not be determined: {}".format(self.total_bad_sense))
         if paired:
-            print "Filtered pairs that mapped to plus strand: %s"%(
-                                                               self.paired["+"])
-            print "Filtered pairs that mapped to minus strand: %s"%(
-                                                               self.paired["-"])
-            print "Filtered pairs that mapped to either strand: %s"%(
-                                                               self.paired["."])
-            print "Total pair basepairs considered: %s"%(self.total_paired_bp)
+            print("Filtered pairs that mapped to plus strand: {}".format(
+                                                                self.paired["+"]))
+            print("Filtered pairs that mapped to minus strand: {}".format(
+                                                               self.paired["-"]))
+            print("Filtered pairs that mapped to either strand: {}".format(
+                                                               self.paired["."]))
+            print("Total pair basepairs considered: {}".format(self.total_paired_bp))
         else:
-            print "Filtered reads that mapped to plus strand: %s"%(
-                                                        self.unpaired["+"])
-            print "Filtered reads that mapped to minus strand: %s"%(
-                                                        self.unpaired["-"])
-            print "Filtered reads that mapped to either strand: %s"%(
-                                                        self.unpaired["."])
-            print "Total read basepairs considered: %s"%(self.total_read_bp)
+            print("Filtered reads that mapped to plus strand: {}".format(
+                                                        self.unpaired["+"]))
+            print("Filtered reads that mapped to minus strand: {}".format(
+                                                        self.unpaired["-"]))
+            print("Filtered reads that mapped to either strand: {}".format(
+                                                        self.unpaired["."]))
+            print("Total read basepairs considered: {}".format(self.total_read_bp))
 
     def calc_mut_rates(self, stranded):
         """ Calculates mutation rate for each type of mutation
@@ -1888,37 +1889,37 @@ class AlignmentStats:
                     mut_rate = (self.mut_counts[base+mut] + 0.0 +
                                 self.mut_counts[complement(base)
                                                 +complement(mut)])/(
-                                self.base_counts[base] + 
+                                self.base_counts[base] +
                                 self.base_counts[complement(base)])
             except ZeroDivisionError:
                 mut_rate = 0.0
             out_dict[base+mut] = mut_rate
         return out_dict
 
-    def print_mut_stats(self, stranded): 
+    def print_mut_stats(self, stranded):
 
-        print "Mutation Stats"
-        print 20*"-"
-        print "Total mutations before FDR: %s"%self.muts_before_filt
-        print "Total mutations after FDR: %s"%sum(self.mut_counts.values())
+        print("Mutation Stats")
+        print(20*"-")
+        print("Total mutations before FDR: %s"%self.muts_before_filt)
+        print("Total mutations after FDR: %s"%sum(self.mut_counts.values()))
         for mut_type in self.mut_counts.keys():
-            print "Total %s->%s mutations after FDR: %s"%(mut_type[0],
-                                                          mut_type[1], 
-                                                      self.mut_counts[mut_type])
+            print("Total {}->{} mutations after FDR: {}".format(mut_type[0],
+                                                          mut_type[1],
+                                                      self.mut_counts[mut_type]))
         for base in self.base_counts.keys():
-            print "Total reference %s sequenced: %s"%(base, self.base_counts[base])
-        print "Mutation Rate Matrix (after filtering):"
-        print "Original Base on left, Mutation base on top"
-        print "\tA\tG\tT\tC"
+            print("Total reference %s sequenced: %s"%(base, self.base_counts[base]))
+        print("Mutation Rate Matrix (after filtering):")
+        print("Original Base on left, Mutation base on top")
+        print("\tA\tG\tT\tC")
         mut_rates = self.calc_mut_rates(stranded)
-        print "A\tX\t%.3e\t%.3e\t%.3e"%(mut_rates["AG"], mut_rates["AT"],
-                                  mut_rates["AC"])
-        print "G\t%.3e\tX\t%.3e\t%.3e"%(mut_rates["GA"], mut_rates["GT"],
-                                  mut_rates["GC"])
-        print "T\t%.3e\t%.3e\tX\t%.3e"%(mut_rates["TA"], mut_rates["TG"],
-                                  mut_rates["TC"])
-        print "C\t%.3e\t%.3e\t%.3e\tX"%(mut_rates["CA"], mut_rates["CG"],
-                                  mut_rates["CT"])
+        print("A\tX\t%.3e\t%.3e\t%.3e"%(mut_rates["AG"], mut_rates["AT"],
+                                  mut_rates["AC"]))
+        print("G\t%.3e\tX\t%.3e\t%.3e"%(mut_rates["GA"], mut_rates["GT"],
+                                  mut_rates["GC"]))
+        print("T\t%.3e\t%.3e\tX\t%.3e"%(mut_rates["TA"], mut_rates["TG"],
+                                  mut_rates["TC"]))
+        print("C\t%.3e\t%.3e\t%.3e\tX"%(mut_rates["CA"], mut_rates["CG"],
+                                  mut_rates["CT"]))
 
     def write_mut_stats(self, out_prefix, stranded):
         mut_rates = self.calc_mut_rates(stranded)
@@ -1931,7 +1932,7 @@ class AlignmentStats:
         file_out = out_prefix + "_exposure.txt"
         with open(file_out, 'w') as fn:
             if paired:
-                fn.write("%s\t%s\n" %((self.total_mapped/2), 
+                fn.write("%s\t%s\n" %((self.total_mapped/2),
                                      self.total_paired_bp))
             else:
                 fn.write("%s\t%s\n" %((self.total_mapped), self.total_read_bp))

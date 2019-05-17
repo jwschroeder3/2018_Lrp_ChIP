@@ -34,7 +34,7 @@
 ################################################################################
 
 ## Python base imports ##
-from __future__ import division
+from __future__ import division, print_function
 import argparse
 import sys
 import random
@@ -56,7 +56,7 @@ class ReadSampler(object):
     Attributes:
         reads (list): holds (start, end) tuples of reads. Converted to numpy
                       array when sampling
-        total (int): number of reads in the list 
+        total (int): number of reads in the list
         sampling (boolean): True if ready for sampling, False otherwise
     """
     def __init__(self):
@@ -69,11 +69,11 @@ class ReadSampler(object):
 
         If sampler is in sampling mode, then converts self.reads to a list
         and sets the sampler flag back to False.
-        
+
 
         Args:
-            new_read (tuple): new (start, end) read 
-        """ 
+            new_read (tuple): new (start, end) read
+        """
         if self.sampling:
             self.convert_to_list()
         self.reads.append(new_read)
@@ -83,24 +83,24 @@ class ReadSampler(object):
         """ Method to add a multiple new reads to the sampler.
 
         If sampler is in sampling mode, then converts self.reads to a list
-        and sets the sampler flag back to False. 
+        and sets the sampler flag back to False.
 
         Args:
             new_reads (list): new list of (start, end) reads
-        """ 
+        """
         if self.sampling:
             self.convert_to_list()
         self.reads.extend(new_reads)
-    
+
     def convert_to_array(self):
         """ Method to convert reads to a numpy array for efficient sampling
-        """ 
+        """
         self.reads = np.asarray(self.reads, dtype="int64")
         self.sampling=True
 
     def convert_to_list(self):
         """ Method to convert reads to a list for efficient addition of reads
-        """ 
+        """
         self.reads = list(self.reads)
         self.sampling = False
 
@@ -111,7 +111,7 @@ class ReadSampler(object):
 
         Args:
             prng (np.RandomState object): random state to use for sampling
-        """ 
+        """
         if not self.sampling:
             self.convert_to_array()
         index = prng.random.randint(0, self.total)
@@ -125,7 +125,7 @@ class ReadSampler(object):
         Args:
             n (int): number of reads to sample
             prng (np.RandomState object): random state to use for sampling
-        """ 
+        """
         if not self.sampling:
             self.convert_to_array()
         index = prng.randint(0, self.total, size=n)
@@ -140,16 +140,16 @@ class ReadSampler(object):
 
         Args:
             f (fhandle): a file handle to save to
-        """ 
+        """
         if not self.sampling:
             self.convert_to_array()
         np.save(f, self.reads)
-    
+
     def sort_reads(self):
         """ Method to sort reads by starting location
 
         Will convert sampler to sampling mode if not already.
-        """ 
+        """
         if not self.sampling:
             self.convert_to_array()
         self.reads = self.reads[self.reads[:,0].argsort()]
@@ -157,7 +157,7 @@ class ReadSampler(object):
         """ Method to load data from a saved sampler object
 
         Will overwrite any attributes that were previously in object
-        """ 
+        """
         self.sampling = True
         self.reads = np.load(f)
         self.total = self.reads.shape[0]
@@ -226,7 +226,7 @@ def get_paired_blocks(r1, r2):
 def create_read_list(samfile):
     """ Read in a samfile and convert it to a list of reads for the sampler
     object
-        
+
     This function is for single end reads only. Skips any reads that are
     gapped reads
 
@@ -242,13 +242,13 @@ def create_read_list(samfile):
         line = sam_utils.SamAlignment(line)
         vals = line.get_aligned_blocks()
         if len(vals) > 1:
-            logging.info("Skipping gapped read %s %s"%(line.QNAME, str(vals)))     
+            logging.info("Skipping gapped read %s %s"%(line.QNAME, str(vals)))
         read_sampler.add_read(vals[0])
     return read_sampler
 
 def create_read_list_paired(samfile):
     """ Read in a samfile and convert it to a list of reads for the sampler
-    object.         
+    object.
 
     This function is for paired end reads only. Skips any reads that are gapped
     reads or are not properly paired. Assumes samfile is sorted by readname and
@@ -260,17 +260,17 @@ def create_read_list_paired(samfile):
 
     Returns:
         read_sampler(obj(ReadSampler)): final read sampler for the samfile
-    
+
     Raises:
         ValueError: If pair readnames don't match. Not considered a failsafe
         for catching violations of assumptions above but should catch most
         mistakes.
     """
     read_sampler = ReadSampler()
-    while True: 
+    while True:
         line1 = samfile.readline()
         line2 = samfile.readline()
-        if not line2: 
+        if not line2:
             break
         line1 = sam_utils.SamAlignment(line1)
         line2 = sam_utils.SamAlignment(line2)
@@ -292,7 +292,7 @@ def map_read(array, read, res=1.0):
     """ Take in a [start, stop] read and map it to an array.
 
     Read must always be in single basepair coordinates [0,end). Array can
-    be any resolution desired through control of res parameter. Modifies 
+    be any resolution desired through control of res parameter. Modifies
     array in place.
 
     Args:
@@ -314,7 +314,7 @@ def sample(read_sampler, n, array, res=1.0, prng = np.random.RandomState()):
         n (int): number of reads to sample
         array (1d np.array): array to store coverage in
         res (optional, float): resolution the numpy array is in
-        prng (optional, np.RandomState): random state to pull random numbers 
+        prng (optional, np.RandomState): random state to pull random numbers
                                          from
     """
     for read in read_sampler.pull_reads(n, prng):
@@ -349,7 +349,7 @@ if __name__ == "__main__":
     sample_parser.add_argument('array_size',type=int, help="length of genome")
     sample_parser.add_argument('--num_samples', type=int, default=1,
     help="number of full samples to pull from the sampler, default is 1")
-    sample_parser.add_argument('--num_reads', type=int, default=None, 
+    sample_parser.add_argument('--num_reads', type=int, default=None,
     help="number of reads to pull for each sample. Default is the size of\
             sampling object.")
     sample_parser.add_argument('--identity', action="store_true",
@@ -361,7 +361,7 @@ if __name__ == "__main__":
             help="psuedo-random number generator seed, default=1234")
     args = parser.parse_args()
 
-    
+
     if args.command == "parse":
         if args.samfile == "-":
             f = sys.stdin
@@ -388,6 +388,6 @@ if __name__ == "__main__":
                 if args.num_reads:
                     num_reads = args.num_reads
                 else:
-                    num_reads = sampler.total 
+                    num_reads = sampler.total
                 sample(sampler, num_reads, array[:,i], args.resolution, prng)
             np.save(args.outpre, array)
