@@ -66,7 +66,7 @@ arg0 is the sample prefix
 arg1 is the input bam file
 
 ```bash
-samtools view -f 3 -F 2828 -q 30 arg1 | python2.7 bootstrap_sam_file.py parse - arg0.ob --paired 2> arg0_sampler.err
+samtools view -f 3 -F 2828 -q 30 arg1 | python3 bootstrap_sam_file.py parse - arg0.ob --paired 2> arg0_sampler.err
 ```
 
 ## Obtaining summary tracks at 10 bp resolution ##
@@ -83,7 +83,7 @@ arg7 and arg8 are samplers for the KO input samples
 Note that arg1 and arg3 are paired, arg2 and arg4 are paired etc.
 
 ```bash
-python2.7 bootstrapped_chip_no_consolidation.py 4215607 arg0 --ext_samps arg1 arg2 --inp_samps arg3 arg4 --ext_conts arg5 arg6 --inp_conts arg7 arg8 --num_replicates 1 --identity -s 1234 -p 8 --save_summaries 0.05 --resolution 10 2> arg0.log
+python3 bootstrapped_chip_no_consolidation.py --sample_name_luts run_info --genome_size 4215607 --out_prefix arg0 --ChIP_samps arg1 arg2 --inp_samps arg3 arg4 --ChIP_conts arg5 arg6 --inp_conts arg7 arg8 --num_replicates 1 --identity -s 1234 -p 8 --save_summaries 0.05 --resolution 10 2> arg0.log
 ```
 
 ## Obtaining bootstrap replicate summary statistics ##

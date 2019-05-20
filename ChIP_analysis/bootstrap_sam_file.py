@@ -45,9 +45,11 @@ import numpy as np
 # custom module
 import sam_utils
 
+########################################################
 ## TO DO:
 # add support for multiple chromosomed organisms
 # add support for strandedness
+########################################################
 
 class ReadSampler(object):
     """Class to hold and sample from processed reads. Reads are stored internally
@@ -153,6 +155,7 @@ class ReadSampler(object):
         if not self.sampling:
             self.convert_to_array()
         self.reads = self.reads[self.reads[:,0].argsort()]
+
     def load_data(self, f):
         """ Method to load data from a saved sampler object
 

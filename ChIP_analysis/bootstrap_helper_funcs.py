@@ -28,8 +28,10 @@
 #CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
 
 import numpy as np
+import numba
 from math import ceil, floor
 
+# @numba.jit(nopython=True, parallel=True)
 def credible_interval(array, alpha = 0.05):
     """ Take a bootstrapped based 95% credible interval
 
@@ -42,13 +44,25 @@ def credible_interval(array, alpha = 0.05):
                                   pos 1: min_ci at alpha
                                   pos 2: max_ci at alpha
     """
-    out_array = np.zeros(3, dtype=float)
+    out_array = np.zeros(3)
     mean = np.mean(array)
     out_array[0] = mean
-    sorted_array = np.sort(array)
-    out_array[1] = sorted_array[int(floor((alpha/2)*array.size))]
-    out_array[2] = sorted_array[int(floor(array.size - alpha/2*array.size))]
+    array_sort = bubblesort_jit(array)
+    out_array[1] = array_sort[int(floor((alpha/2)*array.size))]
+    out_array[2] = array_sort[int(floor(array.size - alpha/2*array.size))]
     return out_array
+
+@numba.jit(nopython=True)
+def bubblesort_jit(arr):
+    N = arr.shape[0]
+    for end in range(N, 1, -1):
+        for i in range(end - 1):
+            cur = arr[i]
+            if cur > arr[i + 1]:
+                tmp = arr[i]
+                arr[i] = arr[i + 1]
+                arr[i + 1] = tmp
+    return(arr)
 
 def least_extreme_value(stats):
     """ Take the value closest to zero for the min/max ci
