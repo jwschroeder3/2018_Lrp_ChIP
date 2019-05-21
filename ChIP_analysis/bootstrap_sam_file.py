@@ -44,6 +44,7 @@ import time
 # Wildely available
 import numpy as np
 import numba
+from Bio import SeqIO
 # custom module
 import sam_utils
 
@@ -375,7 +376,9 @@ if __name__ == "__main__":
             on the samfile of interest")
     sample_parser.add_argument('outpre', help="output file to np.save the\
             numpy array that is created")
-    sample_parser.add_argument('array_size',type=int, help="length of genome")
+    sample_parser.add_argument('--reference_genome', type=str, help="fasta\
+        file containing reference genome. Will be used to infer genome size")
+    # sample_parser.add_argument('array_size',type=int, help="length of genome")
     sample_parser.add_argument('--num_samples', type=int, default=1,
     help="number of full samples to pull from the sampler, default is 1")
     sample_parser.add_argument('--num_reads', type=int, default=None,
@@ -408,10 +411,12 @@ if __name__ == "__main__":
         sampler.save_data(args.outpre)
 
     elif args.command == "sample":
+        array_size = len(SeqIO.read(args.reference_genome, 'fasta'))
+
         logging.info("Sampling from file {}".format(args.outpre + ".npy"))
         logging.info("Using seed {}".format(args.seed))
         prng = np.random.RandomState(args.seed)
-        array = np.zeros((int(floor(args.array_size/args.resolution)), args.num_samples), dtype=np.int32)
+        array = np.zeros((int(floor(array_size/args.resolution)), args.num_samples), dtype=np.int32)
         sampler = ReadSampler()
         sampler.load_data(args.samplerfile)
         if args.identity:
