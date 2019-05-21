@@ -40,6 +40,7 @@ import sys
 import random
 import logging
 from math import floor, ceil
+import time
 # Wildely available
 import numpy as np
 import numba
@@ -419,10 +420,13 @@ if __name__ == "__main__":
             np.save(args.outpre, array)
         else:
             for i in range(args.num_samples):
+                begin = time.time()
                 if args.num_reads:
                     num_reads = args.num_reads
                 else:
                     num_reads = sampler.total
                 # array = sample(sampler, num_reads, array[:,i], args.resolution, prng)
                 sample(sampler, num_reads, array[:,i], args.resolution, prng)
+                finish = time.time()
+                logging.info("Sample {} took {} seconds".format(i, finish-begin))
             np.save(args.outpre, array)
