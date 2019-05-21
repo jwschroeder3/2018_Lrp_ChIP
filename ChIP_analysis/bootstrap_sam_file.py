@@ -42,6 +42,7 @@ import logging
 from math import floor, ceil
 # Wildely available
 import numpy as np
+import numba
 # custom module
 import sam_utils
 
@@ -310,8 +311,6 @@ def map_read(array, read, res=1.0):
 def sample(read_sampler, n, array, res=1.0, prng = np.random.RandomState()):
     """ Sample reads with replacement from a sampler and map them to an array
 
-    Modifies array in place
-
     Args:
         read_sampler (class ReadSampler): object holding reads to sample
         n (int): number of reads to sample
@@ -320,9 +319,35 @@ def sample(read_sampler, n, array, res=1.0, prng = np.random.RandomState()):
         prng (optional, np.RandomState): random state to pull random numbers
                                          from
     """
-    for read in read_sampler.pull_reads(n, prng):
-        map_read(array, read, res)
+    sampled_reads = read_sampler.pull_reads(n, prng)
+    numba_sum_coverage_from_sample(sampled_reads, array, res)
+    # return(array)
+    # for read in read_sampler.sampled_reads(n, prng):
+    #     map_read(array, read, res)
 
+@numba.jit(nopython=True, parallel=True)
+def numba_sum_coverage_from_sample(sampled_reads, array, res):
+    """ Map sampled reads to an array
+
+    Args:
+        reads (): sampled read (start,end) positions
+        array (): array to be populated with coverage
+        res (float): resolution the array is in
+    """
+    for i in range(sampled_reads.shape[0]):
+        read = sampled_reads[i,:]
+        # read = sampled_reads[pos,:]
+        start, stop = read
+        start = float(start)
+        stop = float(stop)
+        res = float(res)
+        x = int(ceil(start/res))
+        y = int(ceil(stop/res))
+        # UNCOMMENT TO ONLY EVERY DO SINGLE BP RESOLUTION
+        #array[start:stop] +=1
+        for idx in range(x,y):
+            array[idx] += 1
+    # return(array)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -364,11 +389,14 @@ if __name__ == "__main__":
             help="psuedo-random number generator seed, default=1234")
     args = parser.parse_args()
 
-
+    logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
     if args.command == "parse":
+        logging.info("Preparing sampler object {}".format(args.outpre + ".npy"))
         if args.samfile == "-":
+            logging.info("Reading stream from stdin")
             f = sys.stdin
         else:
+            logging.info("Reading file {}".format(args.samfile))
             f = open(args.samfile, mode="r")
         if args.paired:
             sampler = create_read_list_paired(f)
@@ -377,9 +405,12 @@ if __name__ == "__main__":
         f.close()
         sampler.sort_reads()
         sampler.save_data(args.outpre)
+
     elif args.command == "sample":
+        logging.info("Sampling from file {}".format(args.outpre + ".npy"))
+        logging.info("Using seed {}".format(args.seed))
         prng = np.random.RandomState(args.seed)
-        array = np.zeros((int(floor(args.array_size/args.resolution)), args.num_samples))
+        array = np.zeros((int(floor(args.array_size/args.resolution)), args.num_samples), dtype=np.int32)
         sampler = ReadSampler()
         sampler.load_data(args.samplerfile)
         if args.identity:
@@ -387,10 +418,11 @@ if __name__ == "__main__":
                 map_read(array, read, args.resolution)
             np.save(args.outpre, array)
         else:
-            for i in xrange(args.num_samples):
+            for i in range(args.num_samples):
                 if args.num_reads:
                     num_reads = args.num_reads
                 else:
                     num_reads = sampler.total
+                # array = sample(sampler, num_reads, array[:,i], args.resolution, prng)
                 sample(sampler, num_reads, array[:,i], args.resolution, prng)
             np.save(args.outpre, array)
