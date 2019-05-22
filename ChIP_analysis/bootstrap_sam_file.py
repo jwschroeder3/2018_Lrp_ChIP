@@ -294,7 +294,7 @@ def create_read_list_paired(samfile):
             logging.error("Skipping pair %s"%err)
     return read_sampler
 
-def map_read(array, read, res=1.0):
+def map_reads(array, reads, res=1.0):
     """ Take in a [start, stop] read and map it to an array.
 
     Read must always be in single basepair coordinates [0,end). Array can
@@ -307,8 +307,9 @@ def map_read(array, read, res=1.0):
         res (optional, float): resolution the numpy array is in
 
     """
-    start, stop = read
-    array[int(ceil(start/res)):int(ceil(stop/res))] += 1
+    numba_sum_coverage_from_sample(reads, array, res)
+    # start, stop = reads
+    # array[int(ceil(start/res)):int(ceil(stop/res))] += 1
 
 def sample(read_sampler, n, array, res=1.0, prng = np.random.RandomState()):
     """ Sample reads with replacement from a sampler and map them to an array
@@ -347,9 +348,17 @@ def numba_sum_coverage_from_sample(sampled_reads, array, res):
         y = int(ceil(stop/res))
         # UNCOMMENT TO ONLY EVERY DO SINGLE BP RESOLUTION
         #array[start:stop] +=1
+        # array[x:y] += 1
+        # sum_range_vectorized(x,y,array)
         for idx in range(x,y):
             array[idx] += 1
     # return(array)
+
+# @numba.guvectorize(["void(int32, int32, int32[:])"], '(), (), (n)')
+# def sum_range_vectorized(x,y,array):
+#     for idx in range(x,y):
+#         array[idx] += 1
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -412,6 +421,7 @@ if __name__ == "__main__":
 
     elif args.command == "sample":
         array_size = len(SeqIO.read(args.reference_genome, 'fasta'))
+        logging.info("Inferred genome size is {}".format(array_size))
 
         logging.info("Sampling from file {}".format(args.outpre + ".npy"))
         logging.info("Using seed {}".format(args.seed))
@@ -420,8 +430,7 @@ if __name__ == "__main__":
         sampler = ReadSampler()
         sampler.load_data(args.samplerfile)
         if args.identity:
-            for read in sampler.reads:
-                map_read(array, read, args.resolution)
+            map_reads(array, sampler.reads, args.resolution)
             np.save(args.outpre, array)
         else:
             for i in range(args.num_samples):
