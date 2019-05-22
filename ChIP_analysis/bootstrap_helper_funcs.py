@@ -33,7 +33,7 @@ from math import ceil, floor
 
 # @numba.jit(nopython=True, parallel=True)
 def credible_interval(array, alpha = 0.05):
-    """ Take a bootstrapped based 95% credible interval
+    """ Take a bootstrap-based 95% credible interval
 
     Args:
         array (np.array): 1xn array (n number of bootstraps)
@@ -43,26 +43,35 @@ def credible_interval(array, alpha = 0.05):
                                   pos 0: mean
                                   pos 1: min_ci at alpha
                                   pos 2: max_ci at alpha
+                                  pos 3: median
     """
-    out_array = np.zeros(3)
+    out_array = np.zeros(4)
     mean = np.mean(array)
     out_array[0] = mean
-    array_sort = bubblesort_jit(array)
+    array_sort = np.sort(array)
     out_array[1] = array_sort[int(floor((alpha/2)*array.size))]
     out_array[2] = array_sort[int(floor(array.size - alpha/2*array.size))]
+    # print(array_sort.size)
+    # print(array_sort.size//2)
+    if array_sort.size % 2 == 0:
+        median = (array_sort[array_sort.size//2]+array_sort[array_sort.size//2-1])/2
+    else:
+        median = array_sort[int(floor(array_sort.size//2))]
+    # print("Median: ", median)
+    out_array[3] = median
     return out_array
 
-@numba.jit(nopython=True)
-def bubblesort_jit(arr):
-    N = arr.shape[0]
-    for end in range(N, 1, -1):
-        for i in range(end - 1):
-            cur = arr[i]
-            if cur > arr[i + 1]:
-                tmp = arr[i]
-                arr[i] = arr[i + 1]
-                arr[i + 1] = tmp
-    return(arr)
+# @numba.jit(nopython=True)
+# def bubblesort_jit(arr):
+#     N = arr.shape[0]
+#     for end in range(N, 1, -1):
+#         for i in range(end - 1):
+#             cur = arr[i]
+#             if cur > arr[i + 1]:
+#                 tmp = arr[i]
+#                 arr[i] = arr[i + 1]
+#                 arr[i + 1] = tmp
+#     return(arr)
 
 def least_extreme_value(stats):
     """ Take the value closest to zero for the min/max ci
@@ -72,7 +81,7 @@ def least_extreme_value(stats):
     Returns:
         lev (float): least extreme value
     """
-    mean, minci, maxci = stats
+    mean, minci, maxci, med = stats
     if minci <= 0.0 and maxci >= 0.0:
         return 0.0
     elif minci >= 0.0 and maxci > 0.0:

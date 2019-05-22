@@ -47,6 +47,7 @@ import numba
 from Bio import SeqIO
 # custom module
 import sam_utils
+from bootstrap_helper_funcs import least_extreme_value, credible_interval
 
 ########################################################
 ## TO DO:
@@ -168,7 +169,43 @@ class ReadSampler(object):
         self.reads = np.load(f)
         self.total = self.reads.shape[0]
 
+@numba.jit(nopython=True, parallel=True)
+def get_cpm(array, cpm_array):
+    for i in range(array.shape[1]):
+        cpm_array[:,i] = array[:,i]/np.sum(array[:,i]) * 1e6
 
+def summary_stats_only_finite(array, alpha=0.05):
+    """ This version of summary stats only considers values that aren't nan or
+    inf. Creates summaries a single location based on bootstrap
+
+    Args:
+        array (np.array): np.array that is 1 x n (n is the number of bootstrap
+                          replicates)
+
+    Returns:
+        summary_stats (np.array): np.array that is 1 x 9
+                                  pos 0 average
+                                  pos 1 min_ci at alpha
+                                  pos 2 max_ci at alpha
+                                  pos 3 variance
+                                  pos 4 least extreme value
+                                  pos 5 median
+                                  pos 6 median absolute deviation
+                                  pos 7 number of infinite values in bootstrap
+                                  pos 8 number of nans in bootstrap
+    """
+    finite_vals = np.isfinite(array)
+    num_inf = np.sum(np.isinf(array))
+    num_nan = np.sum(np.isnan(array))
+    if np.sum(finite_vals) == 0:
+        return(np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, num_inf, num_nan)
+    else:
+        these_stats = credible_interval(array[finite_vals], alpha)
+        this_lev = least_extreme_value(these_stats)
+        var = np.var(array[finite_vals])
+        # median = np.median(array[finite_vals])
+        mad = np.median(np.abs(array[finite_vals] - these_stats[3]))
+        return(these_stats[0], these_stats[1], these_stats[2], var, this_lev, these_stats[3], mad, num_inf, num_nan)
 
 def merge(intervals):
     """ Merge several individual intervals into one (start, stop) interval
@@ -400,6 +437,15 @@ if __name__ == "__main__":
             help="only report every x basepairs, default=1")
     sample_parser.add_argument('--seed', type=int, default=1234,
             help="psuedo-random number generator seed, default=1234")
+
+    # summarize
+    summarize_parser = subparsers.add_parser('summarize', help="Summarize\
+            coverage from bootstrap samples.")
+    summarize_parser.add_argument('--samples_path', help="output file from using sample\
+            on the sampler of interest")
+    summarize_parser.add_argument('--out_prefix', help="output file to np.save the\
+            numpy array that is created")
+    
     args = parser.parse_args()
 
     logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
@@ -444,3 +490,28 @@ if __name__ == "__main__":
                 finish = time.time()
                 logging.info("Sample {} took {} seconds".format(i, finish-begin))
             np.save(args.outpre, array)
+
+    elif args.command == "summarize":
+
+        logging.info("Reading in samples from file {}".format(args.samples_path))
+
+        array = np.load(args.samples_path)
+        cpm_array = np.zeros(array.shape)
+        get_cpm(array, cpm_array) # modifies cpm_array in place
+        logging.info("Created cpm_array of shape {}".format(cpm_array.shape))
+        logging.info("Calculating mean, minci, maxci, and median cpm for each position from bootstrapped coverage values")
+        stats = np.apply_along_axis(summary_stats_only_finite, axis=1, arr=cpm_array)
+
+        logging.info("Saved summary stats to {0}_mean.npy, {0}_minci.npy, {0}_maxci.npy, {0}_median.npy".format(args.out_prefix))
+        np.save(args.out_prefix+"_mean", stats[:,0])
+        np.save(args.out_prefix+"_minci", stats[:,1])
+        np.save(args.out_prefix+"_maxci", stats[:,2])
+        np.save(args.out_prefix+"_median", stats[:,5])
+
+        
+
+        
+
+        
+
+

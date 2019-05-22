@@ -90,9 +90,9 @@ def summary_stats_only_finite(array, alpha=0.05):
         these_stats = credible_interval(array[finite_vals], alpha)
         this_lev = least_extreme_value(these_stats)
         var = np.var(array[finite_vals])
-        median = np.median(array[finite_vals])
+        # median = np.median(array[finite_vals])
         mad = np.median(np.abs(array[finite_vals] - median))
-        return(these_stats[0], these_stats[1], these_stats[2], var, this_lev, median, mad, num_inf, num_nan)
+        return(these_stats[0], these_stats[1], these_stats[2], var, this_lev, these_stats[3], mad, num_inf, num_nan)
 
 def summary_stats_nan_zeros(array, alpha=0.05):
     """ This version of summary stats turns nans to 0. NOTE THAT THIS MODIFIES
