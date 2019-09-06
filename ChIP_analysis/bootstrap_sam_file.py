@@ -499,14 +499,15 @@ if __name__ == "__main__":
         cpm_array = np.zeros(array.shape)
         get_cpm(array, cpm_array) # modifies cpm_array in place
         logging.info("Created cpm_array of shape {}".format(cpm_array.shape))
-        logging.info("Calculating mean, minci, maxci, and median cpm for each position from bootstrapped coverage values")
+        logging.info("Calculating mean, minci, maxci, mad, and median cpm for each position from bootstrapped coverage values")
         stats = np.apply_along_axis(summary_stats_only_finite, axis=1, arr=cpm_array)
 
-        logging.info("Saved summary stats to {0}_mean.npy, {0}_minci.npy, {0}_maxci.npy, {0}_median.npy".format(args.out_prefix))
+        logging.info("Saved summary stats to {0}_mean.npy, {0}_minci.npy, {0}_maxci.npy, {0}_median.npy, {0}_mad.npy".format(args.out_prefix))
         np.save(args.out_prefix+"_mean", stats[:,0])
         np.save(args.out_prefix+"_minci", stats[:,1])
         np.save(args.out_prefix+"_maxci", stats[:,2])
         np.save(args.out_prefix+"_median", stats[:,5])
+        np.save(args.out_prefix+"_mad", stats[:,6])
 
         
 

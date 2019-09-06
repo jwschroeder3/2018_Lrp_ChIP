@@ -131,7 +131,7 @@ def actual_reads(sampler, size, res=1):
         size (int): size of numpy array to create
         res (optional, int): resolution the numpy array is in
     """
-    ############# modify to support gpu acceleration ############
+    ############# modify to support jit acceleration ############
     array = np.zeros(size)
     for read in sampler.reads:
         start, stop = read
@@ -412,20 +412,21 @@ if __name__ == "__main__":
     parser.add_argument("--genome_size", type=int, help="size of genome\
             controls how large to build the arrays", required=True)
     parser.add_argument('--out_prefix', help="Output prefix for final matrix.",
-                        required=True)
+                        required=False, default='')
     parser.add_argument("--sample_name_luts", type=str, nargs="+",
-            help="Paths to file containing the\
+            help="Paths to files containing the\
             lookup run information provided by Illumina. The\
             file will be used to match sample IDs\
-            with sample names", required=True)
+            with sample names. Multiple file names should\
+            be separated by spaces.", required=True)
     parser.add_argument('--ChIP_samps', type=str, nargs="+",
             help="Extracted read simulators for samples")
     parser.add_argument('--inp_samps', type=str, nargs="+",
             help="Input read simulators for samples")
-    parser.add_argument('--ChIP_conts', type=str, nargs="+",
-            help="Extracted read simulators for controls")
-    parser.add_argument('--inp_conts', type=str, nargs="+",
-            help="Input read simulators for controls")
+    # parser.add_argument('--ChIP_conts', type=str, nargs="+",
+    #         help="Extracted read simulators for controls")
+    # parser.add_argument('--inp_conts', type=str, nargs="+",
+    #         help="Input read simulators for controls")
     parser.add_argument('--num_replicates', type=int, default=5,
             help="Number of bootstrap replicates to do, default is 5")
     parser.add_argument('--identity', action="store_true",
@@ -451,15 +452,20 @@ if __name__ == "__main__":
 
     num_ext_samp = len(args.ChIP_samps)
     num_inp_samp = len(args.inp_samps)
-    num_ext_cont = len(args.ChIP_conts)
-    num_inp_cont = len(args.inp_conts)
+    # num_ext_cont = len(args.ChIP_conts)
+    # num_inp_cont = len(args.inp_conts)
+
+    if args.out_prefix == '':
+        save_name_prefix = ''
+    else:
+        save_name_prefix = '{}_'.format(args.out_prefix)
 
     if args.save_summaries is not None:
         this_summary_stats_only_finite = lambda x: summary_stats_only_finite(x, alpha=args.save_summaries)
         this_summary_stats_nan_zeros = lambda x: summary_stats_nan_zeros(x, alpha=args.save_summaries)
 
     samp_final = np.zeros((array_size, args.num_replicates, num_ext_samp))
-    cont_final = np.zeros((array_size, args.num_replicates, num_ext_cont))
+    # cont_final = np.zeros((array_size, args.num_replicates, num_ext_cont))
 
     pat = re.compile(r'Sample_\d+')
     # grab the sample names from the treatment sampler files
@@ -471,13 +477,13 @@ if __name__ == "__main__":
         sys.exit()
     else: samp_strings = [match.group() for match in samp_matches]
     # grab the sample names from the control sampler files
-    cont_matches = [pat.search(s) for s in args.ChIP_conts]
-    if None in cont_matches:
-        print("Your sampler file names should begin with the sample id\
-              Illumina gave you, i.e., Sample_NNNNNN,\
-              where N is any integer. Exiting script.")
-        sys.exit()
-    else: cont_strings = [match.group() for match in cont_matches]
+    # cont_matches = [pat.search(s) for s in args.ChIP_conts]
+    # if None in cont_matches:
+    #     print("Your sampler file names should begin with the sample id\
+    #           Illumina gave you, i.e., Sample_NNNNNN,\
+    #           where N is any integer. Exiting script.")
+    #     sys.exit()
+    # else: cont_strings = [match.group() for match in cont_matches]
 
     # read in sample info from illumina to look up descriptions from sample ids
     for i,sample_info_file_name in enumerate(args.sample_name_luts):
@@ -498,10 +504,10 @@ if __name__ == "__main__":
         sample_rows = sample_info[sample_info.Sample_ID == samp_id]
         samp_names.append(sample_rows['Description'].iloc[0]) # grab the first description for this Sample_ID
 
-    cont_names = []
-    for samp_id in cont_strings:
-        cont_rows = sample_info[sample_info.Sample_ID == samp_id]
-        cont_names.append(cont_rows['Description'].iloc[0])
+    # cont_names = []
+    # for samp_id in cont_strings:
+    #     cont_rows = sample_info[sample_info.Sample_ID == samp_id]
+    #     cont_names.append(cont_rows['Description'].iloc[0])
 
     # samp_names = [os.path.basename(x).split(".")[0] for x in args.ChIP_samps]
     # cont_names = [os.path.basename(x).split(".")[0] for x in args.ChIP_conts]
@@ -510,11 +516,11 @@ if __name__ == "__main__":
     all_sims = []
     all_sims.extend(args.ChIP_samps)
     all_sims.extend(args.inp_samps)
-    all_sims.extend(args.ChIP_conts)
-    all_sims.extend(args.inp_conts)
-    if num_ext_samp != num_inp_samp or num_ext_cont != num_inp_cont:
+    # all_sims.extend(args.ChIP_conts)
+    # all_sims.extend(args.inp_conts)
+    if num_ext_samp != num_inp_samp: # or num_ext_cont != num_inp_cont:
         logging.error("Mismatch number of extracted and input samples Ext_samp: %s\
-                Inp_samp: %s, Ext_cont: %s, Inp_cont: %s"%(num_ext_samp, num_inp_samp, num_ext_cont, num_inp_cont))
+                Inp_samp: %s"%(num_ext_samp, num_inp_samp))#, num_ext_cont, num_inp_cont))
 
     all_sim = []
     for sampler in all_sims:
@@ -556,28 +562,30 @@ if __name__ == "__main__":
                                                    range(num_ext_samp,
                                                          num_ext_samp+num_inp_samp))):
             samp_final[:,i,j] = log2_ratio(arrays[ext_ind], arrays[inp_ind])
-        for j, (ext_ind, inp_ind) in enumerate(zip(range(num_ext_samp + num_inp_samp,
-                                                         num_ext_samp + num_inp_samp+num_ext_cont),
-                                                   range(num_ext_samp + num_inp_samp + num_ext_cont,
-                                                         num_ext_samp + num_inp_samp + num_ext_cont + num_inp_cont))):
-            cont_final[:,i,j]=log2_ratio(arrays[ext_ind], arrays[inp_ind])
+        # for j, (ext_ind, inp_ind) in enumerate(zip(range(num_ext_samp + num_inp_samp,
+        #                                                  num_ext_samp + num_inp_samp+num_ext_cont),
+        #                                            range(num_ext_samp + num_inp_samp + num_ext_cont,
+        #                                                  num_ext_samp + num_inp_samp + num_ext_cont + num_inp_cont))):
+        #     cont_final[:,i,j]=log2_ratio(arrays[ext_ind], arrays[inp_ind])
         finish = time.time()
         logging.info("Calculating Ratios for replicate {} took {} seconds".format(i, finish-begin))
 
 
     # Write out final output
     if args.identity and args.save_summaries:
+        # save sample summaries
         for j, name in enumerate(samp_names):
-            np.save(args.out_prefix+"_%s_actual"%name, samp_final[:,:,j])
+            save_name = "{}{}_actual".format(save_name_prefix,name)
+            np.save(save_name, samp_final[:,:,j])
         # save control summaries
-        for j, name in enumerate(cont_names):
-            np.save(args.out_prefix+"_%s_actual"%name, cont_final[:,:,j])
+        # for j, name in enumerate(cont_names):
+        #     np.save(args.out_prefix+"_%s_actual"%name, cont_final[:,:,j])
         # save each combination of sample - control summary
-        for j, samp_name in enumerate(samp_names):
-            for k, cont_name in enumerate(cont_names):
-                # note that floored sub MODIFIES the control array. Since we have already written the control array
-                # that is not a big deal but be aware that this modification happens
-                np.save(args.out_prefix+"_%s_Sub_%s_actual"%(samp_name,cont_name), floored_sub(samp_final[:,:,j], cont_final[:,:,k]))
+        # for j, samp_name in enumerate(samp_names):
+        #     for k, cont_name in enumerate(cont_names):
+        #         # note that floored sub MODIFIES the control array. Since we have already written the control array
+        #         # that is not a big deal but be aware that this modification happens
+        #         np.save(args.out_prefix+"_%s_Sub_%s_actual"%(samp_name,cont_name), floored_sub(samp_final[:,:,j], cont_final[:,:,k]))
 
     elif args.save_summaries:
         # ALL OF THIS IS HARDCODED QUICK CODING. Saves a lot of output files to be
@@ -587,64 +595,64 @@ if __name__ == "__main__":
         # save sample summaries
         for j, name in enumerate(samp_names):
             these_stats = np.apply_along_axis(this_summary_stats_only_finite, 1, samp_final[:,:,j])
-            np.save(args.out_prefix+"_%s_mean"%name, these_stats[:,0])
-            np.save(args.out_prefix+"_%s_minci"%name, these_stats[:,1])
-            np.save(args.out_prefix+"_%s_maxci"%name, these_stats[:,2])
-            np.save(args.out_prefix+"_%s_var"%name, these_stats[:,3])
-            np.save(args.out_prefix+"_%s_lev"%name, these_stats[:,4])
-            np.save(args.out_prefix+"_%s_median"%name, these_stats[:,5])
-            np.save(args.out_prefix+"_%s_mad"%name, these_stats[:,6])
-            np.save(args.out_prefix+"_%s_num_inf"%name, these_stats[:,7])
-            np.save(args.out_prefix+"_%s_num_nan"%name, these_stats[:,8])
+            np.save("{}{}_mean".format(save_name_prefix,name), these_stats[:,0])
+            np.save("{}{}_minci".format(save_name_prefix,name), these_stats[:,1])
+            np.save("{}{}_maxci".format(save_name_prefix,name), these_stats[:,2])
+            np.save("{}{}_var".format(save_name_prefix,name), these_stats[:,3])
+            np.save("{}{}_lev".format(save_name_prefix,name), these_stats[:,4])
+            np.save("{}{}_median".format(save_name_prefix,name), these_stats[:,5])
+            np.save("{}{}_mad".format(save_name_prefix,name), these_stats[:,6])
+            np.save("{}{}_num_inf".format(save_name_prefix,name), these_stats[:,7])
+            np.save("{}{}_num_nan".format(save_name_prefix,name), these_stats[:,8])
         # save control summaries
-        for j, name in enumerate(cont_names):
-            these_stats = np.apply_along_axis(this_summary_stats_only_finite, 1, cont_final[:,:,j])
-            np.save(args.out_prefix+"_%s_mean"%name, these_stats[:,0])
-            np.save(args.out_prefix+"_%s_minci"%name, these_stats[:,1])
-            np.save(args.out_prefix+"_%s_maxci"%name, these_stats[:,2])
-            np.save(args.out_prefix+"_%s_var"%name, these_stats[:,3])
-            np.save(args.out_prefix+"_%s_lev"%name, these_stats[:,4])
-            np.save(args.out_prefix+"_%s_median"%name, these_stats[:,5])
-            np.save(args.out_prefix+"_%s_mad"%name, these_stats[:,6])
-            np.save(args.out_prefix+"_%s_num_inf"%name, these_stats[:,7])
-            np.save(args.out_prefix+"_%s_num_nan"%name, these_stats[:,8])
-        # save each combination of sample - control summary
-        for j, samp_name in enumerate(samp_names):
-            for k, cont_name in enumerate(cont_names):
-                these_stats = np.apply_along_axis(this_summary_stats_only_finite, 1, floored_sub(samp_final[:,:,j], cont_final[:,:,k]))
-                np.save(args.out_prefix+"_%s_Sub_%s_mean"%(samp_name,cont_name), these_stats[:,0])
-                np.save(args.out_prefix+"_%s_Sub_%s_minci"%(samp_name,cont_name), these_stats[:,1])
-                np.save(args.out_prefix+"_%s_Sub_%s_maxci"%(samp_name, cont_name), these_stats[:,2])
-                np.save(args.out_prefix+"_%s_Sub_%s_var"%(samp_name,cont_name), these_stats[:,3])
-                np.save(args.out_prefix+"_%s_Sub_%s_lev"%(samp_name,cont_name), these_stats[:,4])
-                np.save(args.out_prefix+"_%s_Sub_%s_median"%(samp_name,cont_name), these_stats[:,5])
-                np.save(args.out_prefix+"_%s_Sub_%s_mad"%(samp_name,cont_name), these_stats[:,6])
-                np.save(args.out_prefix+"_%s_Sub_%s_num_inf"%(samp_name,cont_name), these_stats[:,7])
-                np.save(args.out_prefix+"_%s_Sub_%s_num_nan"%(samp_name,cont_name), these_stats[:,8])
-        finish = time.time()
-        logging.info("Calculating Summary Stats took {} seconds".format(finish-begin))
+        # for j, name in enumerate(cont_names):
+        #     these_stats = np.apply_along_axis(this_summary_stats_only_finite, 1, cont_final[:,:,j])
+        #     np.save("{}{}_mean".format(save_name_prefix,name), these_stats[:,0])
+        #     np.save("{}{}_minci".format(save_name_prefix,name), these_stats[:,1])
+        #     np.save("{}{}_maxci".format(save_name_prefix,name), these_stats[:,2])
+        #     np.save("{}{}_var".format(save_name_prefix,name), these_stats[:,3])
+        #     np.save("{}{}_lev".format(save_name_prefix,name), these_stats[:,4])
+        #     np.save("{}{}_median".format(save_name_prefix,name), these_stats[:,5])
+        #     np.save("{}{}_mad".format(save_name_prefix,name), these_stats[:,6])
+        #     np.save("{}{}_num_inf".format(save_name_prefix,name), these_stats[:,7])
+        #     np.save("{}{}_num_nan".format(save_name_prefix,name), these_stats[:,8])
+        # # save each combination of sample - control summary
+        # for j, samp_name in enumerate(samp_names):
+        #     for k, cont_name in enumerate(cont_names):
+        #         these_stats = np.apply_along_axis(this_summary_stats_only_finite, 1, floored_sub(samp_final[:,:,j], cont_final[:,:,k]))
+        #         np.save(args.out_prefix+"_%s_Sub_%s_mean"%(samp_name,cont_name), these_stats[:,0])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_minci"%(samp_name,cont_name), these_stats[:,1])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_maxci"%(samp_name, cont_name), these_stats[:,2])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_var"%(samp_name,cont_name), these_stats[:,3])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_lev"%(samp_name,cont_name), these_stats[:,4])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_median"%(samp_name,cont_name), these_stats[:,5])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_mad"%(samp_name,cont_name), these_stats[:,6])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_num_inf"%(samp_name,cont_name), these_stats[:,7])
+        #         np.save(args.out_prefix+"_%s_Sub_%s_num_nan"%(samp_name,cont_name), these_stats[:,8])
+        # finish = time.time()
+        # logging.info("Calculating Summary Stats took {} seconds".format(finish-begin))
 
 #        logging.info("Calculating Summary Stats for nans as zeros")
 #        # save sample summaries
 #        for j, name in enumerate(samp_names):
 #            these_stats = np.apply_along_axis(this_summary_stats_nan_zeros, 1, samp_final[:,:,j])
-#            np.save(args.out_prefix+"_%s_mean"%name, these_stats[:,0])
-#            np.save(args.out_prefix+"_%s_minci"%name, these_stats[:,1])
-#            np.save(args.out_prefix+"_%s_maxci"%name, these_stats[:,2])
-#            np.save(args.out_prefix+"_%s_var"%name, these_stats[:,3])
-#            np.save(args.out_prefix+"_%s_lev"%name, these_stats[:,4])
-#            np.save(args.out_prefix+"_%s_median"%name, these_stats[:,5])
-#            np.save(args.out_prefix+"_%s_mad"%name, these_stats[:,6])
+#            np.save("{}{}_mean".format(save_name_prefix,name), these_stats[:,0])
+#            np.save("{}{}_minci".format(save_name_prefix,name), these_stats[:,1])
+#            np.save("{}{}_maxci".format(save_name_prefix,name), these_stats[:,2])
+#            np.save("{}{}_var".format(save_name_prefix,name), these_stats[:,3])
+#            np.save("{}{}_lev".format(save_name_prefix,name), these_stats[:,4])
+#            np.save("{}{}_median".format(save_name_prefix,name), these_stats[:,5])
+#            np.save("{}{}_mad".format(save_name_prefix,name), these_stats[:,6])
 #        # save control summaries
 #        for j, name in enumerate(cont_names):
 #            these_stats = np.apply_along_axis(this_summary_stats_only_finite, 1, cont_final[:,:,j])
-#            np.save(args.out_prefix+"_%s_mean"%name, these_stats[:,0])
-#            np.save(args.out_prefix+"_%s_minci"%name, these_stats[:,1])
-#            np.save(args.out_prefix+"_%s_maxci"%name, these_stats[:,2])
-#            np.save(args.out_prefix+"_%s_var"%name, these_stats[:,3])
-#            np.save(args.out_prefix+"_%s_lev"%name, these_stats[:,4])
-#            np.save(args.out_prefix+"_%s_median"%name, these_stats[:,5])
-#            np.save(args.out_prefix+"_%s_mad"%name, these_stats[:,6])
+#            np.save("{}{}_mean".format(save_name_prefix,name), these_stats[:,0])
+#            np.save("{}{}_minci".format(save_name_prefix,name), these_stats[:,1])
+#            np.save("{}{}_maxci".format(save_name_prefix,name), these_stats[:,2])
+#            np.save("{}{}_var".format(save_name_prefix,name), these_stats[:,3])
+#            np.save("{}{}_lev".format(save_name_prefix,name), these_stats[:,4])
+#            np.save("{}{}_median".format(save_name_prefix,name), these_stats[:,5])
+#            np.save("{}{}_mad".format(save_name_prefix,name), these_stats[:,6])
 #        # save each combination of sample - control summary
 #        for j, samp_name in enumerate(samp_names):
 #            for k, cont_name in enumerate(cont_names):
@@ -660,5 +668,5 @@ if __name__ == "__main__":
     else:
         # write final array
         logging.info("Writing final array")
-        np.save(args.out_prefix+"_samp", samp_final)
-        np.save(args.out_prefix+"_cont", cont_final)
+        np.save("{}samp".format(save_name_prefix), samp_final)
+        # np.save(args.out_prefix+"_cont", cont_final)
