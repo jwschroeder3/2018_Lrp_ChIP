@@ -170,11 +170,11 @@ def bio_and_tech_filter(bio_qs, tech_qs):
     for bioq, techq in zip(bio_qs, tech_qs):
         this_rep += 1*np.logical_and(bioq > -np.log10(args.bioalpha), techq > -np.log10(args.techalpha))
         temp_peaks = np.logical_or(temp_peaks, this_rep > 0)
-    print "Fractions passing bio and tech filter"
-    print np.sum(this_rep == 1)/(bio_qs[0].size + 0.0)
-    print np.sum(this_rep == 2)/(bio_qs[0].size + 0.0)
-    print np.sum(this_rep == 3)/(bio_qs[0].size + 0.0)
-    print np.sum(this_rep == 4)/(bio_qs[0].size + 0.0)
+    print ("Fractions passing bio and tech filter")
+    print (np.sum(this_rep == 1)/(bio_qs[0].size + 0.0))
+    print (np.sum(this_rep == 2)/(bio_qs[0].size + 0.0))
+    print (np.sum(this_rep == 3)/(bio_qs[0].size + 0.0))
+    print (np.sum(this_rep == 4)/(bio_qs[0].size + 0.0))
     return temp_peaks
 
 def idr_filter(temp_peaks, idrs):
@@ -233,6 +233,7 @@ if __name__ == "__main__":
     parser.add_argument('--resolution', type=float, help="resolution of data", default=1)
     parser.add_argument('--bins', type=int, help="bins to consolidate over", default=30)
     parser.add_argument('--outpre', type=str, help="output prefix")
+    parser.add_argument('--chrom_name', type=str, help="Chromosome name")
     args = parser.parse_args()
 
     actual_sigs = [np.load(x) for x in args.log2ratios]
@@ -259,7 +260,7 @@ if __name__ == "__main__":
         max_valbio = find_max_value(entry[0], entry[1], bio_qs)
         max_validr = find_max_value(entry[0], entry[1], idrs, False)
         max_valtech = find_max_value(entry[0], entry[1], tech_qs, False)
-        this_peak = peak.Peak("gi|48994873|gb|U00096.2|mod|ATCC.47076|", start=int(start), end=int(end), 
+        this_peak = peak.Peak(args.chrom_name, start=int(start), end=int(end), 
                               name = "%s_%s"%(args.outpre,i),
                               score = max_value,
                               signalval = max_valtech,
