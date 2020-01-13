@@ -461,7 +461,8 @@ if __name__ == "__main__":
     samp_final = np.zeros((array_size, args.num_replicates, num_ext_samp))
     cont_final = np.zeros((array_size, args.num_replicates, num_ext_cont))
 
-    pat = re.compile(r'Sample_\d+')
+    # pat = re.compile(r'Sample_\d+')
+    pat = re.compile(r'SRR.+')
     # grab the sample names from the treatment sampler files
     samp_matches = [pat.search(s) for s in args.ChIP_samps]
     if None in samp_matches:
@@ -485,8 +486,11 @@ if __name__ == "__main__":
             sample_info_tmp = (pd.read_csv(sample_info_file_name, header=18) >>
                                select(X.Sample_ID, X.Description))
         else:
+            # sample_info_tmp = (pd.read_csv(sample_info_file_name, sep='\t') >>
+            #                    mutate(Sample_ID = 'Sample_' + X.SampleID.astype(str)) >>
+            #                    select(X.Sample_ID, X.Description))
             sample_info_tmp = (pd.read_csv(sample_info_file_name, sep='\t') >>
-                               mutate(Sample_ID = 'Sample_' + X.SampleID.astype(str)) >>
+                               mutate(Sample_ID = X.SampleID.astype(str)) >>
                                select(X.Sample_ID, X.Description))
         if i == 0:
             sample_info = sample_info_tmp
@@ -519,6 +523,8 @@ if __name__ == "__main__":
     all_sim = []
     for sampler in all_sims:
         logging.info("Reading in sampler {}".format(sampler))
+        if not sampler.endswith(".ob.npy"):
+            sampler = sampler + ".ob.npy"
         all_sim.append(read_in_sampler(sampler))
 
     # all_sim = [read_in_sampler(sampler) for sampler in all_sim]

@@ -489,6 +489,7 @@ if __name__ == "__main__":
                 sample(sampler, num_reads, array[:,i], args.resolution, prng)
                 finish = time.time()
                 logging.info("Sample {} took {} seconds".format(i, finish-begin))
+            logging.info("Saving output array.")
             np.save(args.outpre, array)
 
     elif args.command == "summarize":
